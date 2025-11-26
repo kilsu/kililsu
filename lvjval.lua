@@ -1,10 +1,8 @@
--- 原地复活脚本 - 皮脚本风格
--- 功能: 角色死亡后复活时回到死亡位置，带开关按钮
+-- 原地复活脚本 - 屏幕按钮版本
+-- 功能: 角色死亡后复活时回到死亡位置，带屏幕按钮
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local UIS = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 
 -- 存储死亡位置和开关状态
 local deathPosition = nil
@@ -19,120 +17,58 @@ local function ShowNotification(title, text)
     })
 end
 
--- 创建皮脚本风格按钮
-local function CreatePiScriptButton()
+-- 创建屏幕按钮
+local function CreateScreenButton()
+    -- 如果已有按钮，先删除
+    local existingGUI = game:GetService("CoreGui"):FindFirstChild("RespawnButtonGUI")
+    if existingGUI then
+        existingGUI:Destroy()
+    end
+    
     -- 创建主GUI
-    local MainGUI = Instance.new("ScreenGui")
-    MainGUI.Name = "RespawnAtDeathGUI"
-    MainGUI.Parent = game:GetService("CoreGui")
-    MainGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "RespawnButtonGUI"
+    ScreenGui.Parent = game:GetService("CoreGui")
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    -- 创建拖拽框架
-    local DragFrame = Instance.new("Frame")
-    DragFrame.Size = UDim2.new(0, 200, 0, 40)
-    DragFrame.Position = UDim2.new(0, 20, 0, 20)
-    DragFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    DragFrame.BorderSizePixel = 0
-    DragFrame.Parent = MainGUI
-    DragFrame.Active = true
-    DragFrame.Draggable = true
-
+    -- 创建按钮
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(0, 120, 0, 40)
+    Button.Position = UDim2.new(0, 20, 0.5, -20)
+    Button.BackgroundColor3 = Color3.fromRGB(60, 180, 60)
+    Button.Text = "原地复活: 开"
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.TextSize = 14
+    Button.Font = Enum.Font.GothamSemibold
+    Button.Parent = ScreenGui
+    
+    -- 圆角
     local UICorner = Instance.new("UICorner")
     UICorner.CornerRadius = UDim.new(0, 8)
-    UICorner.Parent = DragFrame
-
-    -- 标题
-    local Title = Instance.new("TextLabel")
-    Title.Size = UDim2.new(1, 0, 0, 40)
-    Title.Position = UDim2.new(0, 0, 0, 0)
-    Title.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    Title.Text = "原地复活"
-    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Title.TextSize = 16
-    Title.Font = Enum.Font.GothamBold
-    Title.Parent = DragFrame
-
-    local TitleCorner = Instance.new("UICorner")
-    TitleCorner.CornerRadius = UDim.new(0, 8)
-    TitleCorner.Parent = Title
-
-    -- 开关按钮
-    local ToggleButton = Instance.new("TextButton")
-    ToggleButton.Size = UDim2.new(0.9, 0, 0, 35)
-    ToggleButton.Position = UDim2.new(0.05, 0, 0, 45)
-    ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 180, 60)
-    ToggleButton.Text = "开启"
-    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ToggleButton.TextSize = 14
-    ToggleButton.Font = Enum.Font.GothamSemibold
-    ToggleButton.Parent = DragFrame
-
-    local ButtonCorner = Instance.new("UICorner")
-    ButtonCorner.CornerRadius = UDim.new(0, 6)
-    ButtonCorner.Parent = ToggleButton
-
-    -- 状态标签
-    local StatusLabel = Instance.new("TextLabel")
-    StatusLabel.Size = UDim2.new(1, 0, 0, 25)
-    StatusLabel.Position = UDim2.new(0, 0, 0, 85)
-    StatusLabel.BackgroundTransparency = 1
-    StatusLabel.Text = "死亡后将返回原地"
-    StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-    StatusLabel.TextSize = 12
-    StatusLabel.Font = Enum.Font.Gotham
-    StatusLabel.Parent = DragFrame
-
-    -- 切换功能
-    ToggleButton.MouseButton1Click:Connect(function()
+    UICorner.Parent = Button
+    
+    -- 边框
+    local UIStroke = Instance.new("UIStroke")
+    UIStroke.Thickness = 2
+    UIStroke.Color = Color3.fromRGB(255, 255, 255)
+    UIStroke.Parent = Button
+    
+    -- 按钮点击事件
+    Button.MouseButton1Click:Connect(function()
         respawnAtDeathLocation = not respawnAtDeathLocation
         
         if respawnAtDeathLocation then
-            ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 180, 60)
-            ToggleButton.Text = "开启"
-            StatusLabel.Text = "死亡后将返回原地"
-            StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+            Button.BackgroundColor3 = Color3.fromRGB(60, 180, 60)
+            Button.Text = "原地复活: 开"
             ShowNotification("原地复活", "功能已开启")
         else
-            ToggleButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
-            ToggleButton.Text = "关闭"
-            StatusLabel.Text = "正常复活"
-            StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            Button.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+            Button.Text = "原地复活: 关"
             ShowNotification("原地复活", "功能已关闭")
         end
     end)
-
-    -- 最小化/最大化功能
-    local MinimizeButton = Instance.new("TextButton")
-    MinimizeButton.Size = UDim2.new(0, 30, 0, 20)
-    MinimizeButton.Position = UDim2.new(1, -35, 0, 5)
-    MinimizeButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    MinimizeButton.Text = "_"
-    MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    MinimizeButton.TextSize = 14
-    MinimizeButton.Font = Enum.Font.GothamBold
-    MinimizeButton.Parent = Title
-
-    local MinimizeCorner = Instance.new("UICorner")
-    MinimizeCorner.CornerRadius = UDim.new(0, 4)
-    MinimizeCorner.Parent = MinimizeButton
-
-    local isMinimized = false
-    MinimizeButton.MouseButton1Click:Connect(function()
-        isMinimized = not isMinimized
-        if isMinimized then
-            DragFrame.Size = UDim2.new(0, 200, 0, 40)
-            ToggleButton.Visible = false
-            StatusLabel.Visible = false
-            MinimizeButton.Text = "+"
-        else
-            DragFrame.Size = UDim2.new(0, 200, 0, 115)
-            ToggleButton.Visible = true
-            StatusLabel.Visible = true
-            MinimizeButton.Text = "_"
-        end
-    end)
-
-    return MainGUI
+    
+    return ScreenGui
 end
 
 -- 监听角色死亡和复活
@@ -177,4 +113,9 @@ end
 
 -- 初始化
 wait(1) -- 等待游戏加载
-CreatePiScriptButt
+CreateScreenButton()
+SetupRespawnListener()
+SetupExistingCharacter()
+
+ShowNotification("原地复活", "脚本已加载\n默认开启原地复活功能")
+print("原地复活脚本已加载 - 屏幕按钮版本")
