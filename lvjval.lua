@@ -1,124 +1,139 @@
--- 死亡留在原地脚本 - 自动执行版
+-- 永久死亡脚本 - 完全阻止重生
 -- 作者: 小皮
--- 功能: 角色死亡后自动留在原地不复活
+-- 功能: 角色死亡后永远躺在地上，不重生
 
-if _G.DeathStayAutoLoaded then
+if _G.PermanentDeathLoaded then
     return
 end
-_G.DeathStayAutoLoaded = true
+_G.PermanentDeathLoaded = true
 
 -- 服务引用
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- 主变量
-local DeathStayEnabled = true
-local GhostCharacter = nil
+-- 阻止重生系统
+local function BlockRespawnCompletely()
+    -- 拦截重生请求
+    local mt = getrawmetatable(game)
+    local oldNamecall = mt.__namecall
+    
+    setreadonly(mt, false)
+    
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+        
+        -- 阻止所有重生相关的方法
+        if method == "RequestCharacterSpawn" or 
+           method == "RequestCharacterRespawn" or
+           method == "RespawnCharacter" or
+           method == "SpawnCharacter" then
+            warn("阻止重生请求: " .. method)
+            return nil
+        end
+        
+        return oldNamecall(self, ...)
+    end)
+    
+    setreadonly(mt, true)
+end
+
+-- 保持死亡状态
+local function KeepCharacterDead()
+    LocalPlayer.CharacterAdded:Connect(function(character)
+        -- 立即杀死新生成的角色
+        wait(0.1)
+        
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            -- 确保角色保持死亡状态
+            humanoid.Health = 0
+            humanoid.MaxHealth = 0
+            
+            -- 阻止任何复活尝试
+            humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+                if humanoid.Health > 0 then
+                    humanoid.Health = 0
+                end
+            end)
+        end
+        
+        -- 防止角色被移除
+        character:SetAttribute("PreventRemoval", true)
+    end)
+end
+
+-- 设置初始死亡
+local function SetupInitialDeath()
+    if LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+        local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        
+        if humanoid and rootPart then
+            -- 监听死亡事件
+            humanoid.Died:Connect(function()
+                -- 角色死亡后，阻止任何重生
+                spawn(function()
+                    while true do
+                        -- 持续阻止角色生成
+                        if LocalPlayer.Character then
+                            -- 确保角色保持死亡状态
+                            local currentHumanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+                            if currentHumanoid and currentHumanoid.Health > 0 then
+                                currentHumanoid.Health = 0
+                            end
+                        else
+                            -- 没有角色时，阻止重生请求
+                            BlockRespawnCompletely()
+                        end
+                        wait(0.5)
+                    end
+                end)
+            end)
+            
+            -- 如果角色还活着，强制死亡
+            if humanoid.Health > 0 then
+                humanoid.Health = 0
+            end
+        end
+    end
+end
 
 -- 通知函数
 local function ShowNotification(title, text)
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = title,
         Text = text,
-        Duration = 5,
+        Duration = 10,
     })
 end
 
--- 创建死亡标记
-local function CreateDeathMarker(position)
-    if GhostCharacter and GhostCharacter.Parent then
-        GhostCharacter:Destroy()
-    end
-    
-    local marker = Instance.new("Part")
-    marker.Name = "DeathPositionMarker"
-    marker.Size = Vector3.new(3, 3, 3)
-    marker.Position = position
-    marker.Anchored = true
-    marker.CanCollide = false
-    marker.Transparency = 0.3
-    marker.BrickColor = BrickColor.new("Bright blue")
-    marker.Material = Enum.Material.Neon
-    
-    -- 发光效果
-    local light = Instance.new("PointLight")
-    light.Brightness = 2
-    light.Range = 12
-    light.Color = Color3.fromRGB(0, 120, 255)
-    light.Parent = marker
-    
-    marker.Parent = workspace
-    GhostCharacter = marker
-    
-    return marker
-end
-
--- 设置防重生系统
-local function SetupAntiRespawn()
-    LocalPlayer.CharacterAdded:Connect(function(character)
-        if not DeathStayEnabled then return end
-        
-        local humanoid = character:WaitForChild("Humanoid")
-        local rootPart = character:WaitForChild("HumanoidRootPart")
-        
-        humanoid.Died:Connect(function()
-            local deathPos = rootPart.Position
-            CreateDeathMarker(deathPos)
-            ShowNotification("死亡留在原地", "角色已保持在死亡位置")
-            
-            -- 阻止重生
-            spawn(function()
-                while DeathStayEnabled do
-                    if LocalPlayer.Character then
-                        LocalPlayer.Character = nil
-                    end
-                    wait(0.1)
-                end
-            end)
-        end)
-    end)
-end
-
--- 为现有角色设置监听
-local function SetupExistingCharacter()
-    if LocalPlayer.Character then
-        local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid.Died:Connect(function()
-                if DeathStayEnabled then
-                    local deathPos = LocalPlayer.Character.HumanoidRootPart.Position
-                    CreateDeathMarker(deathPos)
-                    ShowNotification("死亡留在原地", "角色已保持在死亡位置")
-                end
-            end)
-        end
-    end
-end
-
 -- 初始化
-wait(1) -- 等待游戏加载
+wait(1)
 
-SetupAntiRespawn()
-SetupExistingCharacter()
+-- 启用所有阻止机制
+BlockRespawnCompletely()
+KeepCharacterDead()
+SetupInitialDeath()
 
-ShowNotification("死亡留在原地", "功能已启用\n死亡后将停留在原地")
+ShowNotification("永久死亡模式", "已启用完全死亡模式\n角色将永远保持死亡状态")
 
-print("死亡留在原地脚本已加载 - 自动执行模式")
-print("作者: 小皮")
+print("永久死亡脚本已加载")
+print("角色将永远保持死亡状态，不会重生")
 
--- 清理函数
-local function Cleanup()
-    if GhostCharacter then
-        GhostCharacter:Destroy()
-        GhostCharacter = nil
-    end
-    _G.DeathStayAutoLoaded = false
-end
-
--- 玩家离开时清理
-Players.PlayerRemoving:Connect(function(player)
-    if player == LocalPlayer then
-        Cleanup()
+-- 监控状态
+spawn(function()
+    while wait(5) do
+        if LocalPlayer.Character then
+            local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                humanoid.Health = 0
+                print("检测到角色复活，已强制死亡")
+            end
+        else
+            print("无角色状态 - 阻止重生中")
+        end
     end
 end)
