@@ -1,34 +1,35 @@
--- 永久死亡脚本 - 阻止重生倒计时
--- 功能: 将重生时间设置为极大值，阻止角色重生
+-- 超长重生时间脚本
+-- 功能: 将重生时间设置为12小时，不强制角色死亡
 
-if _G.InfiniteDeathLoaded then return end
-_G.InfiniteDeathLoaded = true
+if _G.LongRespawnLoaded then return end
+_G.LongRespawnLoaded = true
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- 设置极长的重生时间
-local function SetInfiniteRespawnTime()
-    -- 尝试修改玩家的重生时间
+-- 设置12小时重生时间（43200秒）
+local function SetLongRespawnTime()
+    -- 尝试多种方法设置重生时间
     pcall(function()
-        -- 方法1: 尝试直接设置重生时间
-        LocalPlayer.RespawnTime = 999999 -- 设置极长的重生时间（秒）
+        -- 方法1: 直接设置重生时间
+        if LocalPlayer.RespawnTime ~= nil then
+            LocalPlayer.RespawnTime = 43200 -- 12小时
+        end
     end)
     
-    -- 方法2: 监听重生时间变化并重置为极大值
-    if LocalPlayer:GetPropertyChangedSignal then
-        LocalPlayer:GetPropertyChangedSignal("RespawnTime"):Connect(function()
-            pcall(function()
-                LocalPlayer.RespawnTime = 999999
-            end)
-        end)
-    end
+    pcall(function()
+        -- 方法2: 尝试通过Player属性设置
+        LocalPlayer:SetAttribute("RespawnTime", 43200)
+    end)
     
-    -- 方法3: 定期重置重生时间
+    -- 方法3: 持续监控并重置重生时间
     spawn(function()
-        while wait(5) do
+        while wait(10) do -- 每10秒检查一次
             pcall(function()
-                LocalPlayer.RespawnTime = 999999
+                if LocalPlayer.RespawnTime ~= nil and LocalPlayer.RespawnTime < 43200 then
+                    LocalPlayer.RespawnTime = 43200
+                    print("重生时间已重置为12小时")
+                end
             end)
         end
     end)
@@ -40,19 +41,26 @@ local function SetupDeathListener()
         local humanoid = character:WaitForChild("Humanoid")
         
         humanoid.Died:Connect(function()
-            -- 角色死亡时设置极长重生时间
-            SetInfiniteRespawnTime()
-            
-            -- 防止角色被移除
-            pcall(function()
-                character:SetAttribute("PreventRemoval", true)
-            end)
+            -- 角色死亡时确保重生时间为12小时
+            SetLongRespawnTime()
+            print("角色死亡，重生时间设置为12小时")
         end)
     end)
 end
 
 -- 初始化
-SetInfiniteRespawnTime()
+SetLongRespawnTime()
 SetupDeathListener()
 
-print("永久死亡模式已启用 - 重生时间设置为999999秒")
+-- 如果已经有角色，也设置监听
+if LocalPlayer.Character then
+    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+    if humanoid then
+        humanoid.Died:Connect(function()
+            SetLongRespawnTime()
+            print("角色死亡，重生时间设置为12小时")
+        end)
+    end
+end
+
+print("超长重生时间已启用 - 设置为12小时")
